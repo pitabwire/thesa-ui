@@ -10,19 +10,31 @@ on:
   pull_request_review:
     types: [submitted]
 
+# Prevent multiple Claude instances from running simultaneously on the same issue/PR
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+env:
+  # Configure authorized users for label-based triggers (comma-separated)
+  AUTHORIZED_LABEL_USERS: "mlr,pitabwire"
+  # Maximum runtime in minutes to prevent runaway costs
+  MAX_RUNTIME_MINUTES: 30
+
 jobs:
   claude:
     if: >-
-      (github.event_name == 'issues' && github.event.label.name == 'claude' && 
-       contains(fromJson('["mlr"]'), github.event.sender.login)) ||
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && 
-       contains(fromJson('["OWNER", "MEMBER"]'), github.event.comment.author_association)) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && 
-       contains(fromJson('["OWNER", "MEMBER"]'), github.event.review.author_association)) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && 
-       contains(fromJson('["OWNER", "MEMBER"]'), github.event.comment.author_association))
+      (github.event_name == 'issues' && github.event.label.name == 'claude' &&
+       contains(fromJson('["mlr", "pitabwire"]'), github.event.sender.login)) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') &&
+       contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') &&
+       contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.review.author_association)) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') &&
+       contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association))
 
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       pull-requests: read
@@ -47,29 +59,53 @@ jobs:
 
           # Custom prompt with strict formatting rules
           prompt: |
+            # Repository Context
+            - Repository: ${{ github.repository }}
+            - Branch: ${{ github.ref_name }}
+            - Event: ${{ github.event_name }}
+
+            # Project-Specific Instructions
+            Check for CLAUDE.md, .claude/*, or docs/ directory for project-specific guidelines.
+
             **IMPORTANT - WHEN WORKING ON ISSUES:**
             After you finish implementing the code changes and committing them, create a pull request:
-            ```
+            ```bash
             gh pr create --title "Your descriptive title" --body "## Summary
             Your summary of what was implemented.
-             
+
+            ## Changes
+            - List key changes made
+
+            ## Testing
+            - Describe how this was tested
+
             Closes #${{ github.event.issue.number }}"
             ```
             Always include a summary of changes AND "Closes #${{ github.event.issue.number }}" in the body.
-             
+
             **COMMIT RULES:**
             - Do NOT add "Co-authored-by" lines to commits
             - Do NOT add "Generated with Claude Code" or similar attributions
             - Keep commits clean and professional
-          
+            - Run tests before committing when applicable
+
             **WHEN WORKING ON PR FEEDBACK:**
             Make the requested changes and commit. The PR will automatically update - do NOT create a new PR.
-           
+
             **WHEN FIXING CI FAILURES:**
-            Fix the issues, commit the fix. The CI will automatically re-run.
-           
+            1. Read the CI logs using your actions: read permission
+            2. Understand the root cause of the failure
+            3. Fix the issues, commit the fix
+            4. The CI will automatically re-run
+
+            **SECURITY:**
+            - Never commit secrets, API keys, or credentials
+            - Check for security vulnerabilities in dependencies
+            - Validate and sanitize user inputs
+            - Follow OWASP best practices
+
             **OUTPUT RULES:**
-          
+
             ## Commit Message Requirements (max 72 chars)
             - Imperative mood: "Add" not "Added"
             - Action verbs: Add, Update, Fix, Remove, Refactor, Implement
@@ -86,18 +122,26 @@ jobs:
           claude_args: |
             --model "claude-opus-4-6"
             --max-turns 100
-            --allowedTools "Bash(git:*),Bash(gh issue:*),Bash(gh pr:*),Bash(gh repo:*),Bash(npm:*),Bash(npx:*),Edit,Write,Read,Glob,Grep,LS,WebSearch,WebFetch"
+            --allowedTools "Bash(git:*),Bash(gh issue:*),Bash(gh pr:*),Bash(gh repo:*),Bash(gh api:*),Bash(npm:*),Bash(npx:*),Bash(flutter:*),Bash(dart:*),Edit,Write,Read,Glob,Grep,LS,WebSearch,WebFetch,Task"
+            --timeout 1800000
 
-      # Clean up the comment - remove the malformed "Create PR" link and trailing artifacts
+      # Clean up the comment - remove malformed artifacts and add helpful context
       - name: Clean up Claude comment
-        if: github.event_name == 'issues'
+        if: always() && (github.event_name == 'issues' || github.event_name == 'issue_comment')
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
+          # Determine the issue number
+          ISSUE_NUM="${{ github.event.issue.number }}"
+
           # Get the latest comment from Claude on this issue
-          COMMENT_ID=$(gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments --jq '.[-1].id')
+          COMMENT_ID=$(gh api repos/${{ github.repository }}/issues/${ISSUE_NUM}/comments \
+            --jq '.[-1] | select(.user.login == "github-actions[bot]" or .user.type == "Bot") | .id')
 
           if [ -n "$COMMENT_ID" ]; then
+            echo "Cleaning up comment ID: $COMMENT_ID"
+
             # Get current comment body
             BODY=$(gh api repos/${{ github.repository }}/issues/comments/$COMMENT_ID --jq '.body')
 
@@ -107,5 +151,17 @@ jobs:
             # Update the comment
             gh api repos/${{ github.repository }}/issues/comments/$COMMENT_ID \
               -X PATCH \
-              -f body="$CLEANED"
+              -f body="$CLEANED" || echo "Failed to clean comment, skipping..."
+          else
+            echo "No bot comment found to clean up"
+          fi
+
+      # Report workflow status
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Claude workflow completed successfully"
+          else
+            echo "⚠️ Claude workflow completed with status: ${{ job.status }}"
           fi

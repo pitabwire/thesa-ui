@@ -3,42 +3,150 @@ name: Claude Code Review
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+    paths:
+      # Include code files
+      - "**.dart"
+      - "**.ts"
+      - "**.tsx"
+      - "**.js"
+      - "**.jsx"
+      - "**.go"
+      - "**.py"
+      - "**.java"
+      - "**.kt"
+      - "**.swift"
+      - "**.rs"
+      - "pubspec.yaml"
+      - "package.json"
+      - "go.mod"
+      # Exclude documentation and config (unless critical)
+      - "!**.md"
+      - "!docs/**"
+      - "!.github/**"
+      - "!*.yml"
+      - "!*.yaml"
+      - "!LICENSE"
+      - "!.gitignore"
+
+# Prevent multiple reviews from running simultaneously on the same PR
+concurrency:
+  group: code-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  # Maximum runtime in minutes
+  MAX_RUNTIME_MINUTES: 15
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    # Skip draft PRs and PRs from owners (focus on contributors and external PRs)
+    if: |
+      github.event.pull_request.draft == false &&
+      (
+        github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR' ||
+        github.event.pull_request.author_association == 'CONTRIBUTOR' ||
+        github.event.pull_request.author_association == 'NONE'
+      )
 
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write  # Upgraded to write for posting review comments
       issues: read
       id-token: write
+      actions: read  # Enable reading CI results for context
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0  # Get full history for better context
+
+      - name: Check PR size
+        id: pr-size
+        run: |
+          # Get PR stats
+          CHANGES=$(gh pr view ${{ github.event.pull_request.number }} --json additions,deletions --jq '.additions + .deletions')
+          echo "changes=$CHANGES" >> $GITHUB_OUTPUT
+
+          if [ "$CHANGES" -gt 1000 ]; then
+            echo "⚠️ Large PR detected ($CHANGES lines changed). Review may be limited."
+            echo "large_pr=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ PR size is reasonable ($CHANGES lines changed)"
+            echo "large_pr=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Run Claude Code Review
         id: claude-review
+        if: steps.pr-size.outputs.large_pr != 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          # Enable CI integration
+          additional_permissions: |
+            actions: read
+
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
+
+          prompt: |
+            Review this pull request with focus on:
+
+            ## Priority Areas
+            1. **Security vulnerabilities** (XSS, SQL injection, auth issues, secret exposure)
+            2. **Critical bugs** (null pointer, race conditions, logic errors)
+            3. **Performance issues** (N+1 queries, memory leaks, inefficient algorithms)
+            4. **Data integrity** (validation, consistency, error handling)
+
+            ## Secondary Review
+            5. Code quality and maintainability
+            6. Best practices and patterns
+            7. Test coverage gaps
+            8. Documentation needs
+
+            ## Review Guidelines
+            - Only report high-confidence issues
+            - Provide specific fix suggestions with code examples
+            - Consider the broader context and existing patterns
+            - Be constructive and educational
+
+            ## PR Context
+            - Repository: ${{ github.repository }}
+            - PR: #${{ github.event.pull_request.number }}
+            - Author: @${{ github.event.pull_request.user.login }}
+            - Author Association: ${{ github.event.pull_request.author_association }}
+
+            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+
+          # Use Sonnet for cost-effective reviews (Opus for complex PRs only)
+          claude_args: |
+            --model "claude-sonnet-4-5"
+            --max-turns 50
+            --timeout 900000
+
+      - name: Handle large PR
+        if: steps.pr-size.outputs.large_pr == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ **Automated Review Skipped**\n\nThis PR is quite large (${{ steps.pr-size.outputs.changes }} lines changed). For better review quality, consider:\n\n1. Breaking this into smaller, focused PRs\n2. Requesting manual review from maintainers\n3. Using `@claude` mentions for specific questions\n\n**Tip**: PRs under 500 lines typically receive more thorough automated reviews.'
+            })
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Code review completed successfully"
+          else
+            echo "⚠️ Code review completed with status: ${{ job.status }}"
+          fi
 
