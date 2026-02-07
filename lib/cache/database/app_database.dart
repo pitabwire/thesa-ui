@@ -118,6 +118,14 @@ class AppDatabase extends _$AppDatabase {
 /// Create the database instance
 ///
 /// This is the factory function used throughout the app
+///
+/// SECURITY NOTE: This database stores sensitive data (user permissions,
+/// workflow state) in an unencrypted SQLite database. For production use,
+/// consider using an encrypted database executor (e.g., sqlcipher_flutter_libs)
+/// to protect sensitive data at rest. Encryption keys should be derived from
+/// the user's session or device-specific secrets.
+///
+/// TODO: Implement database encryption before production deployment
 Future<AppDatabase> createDatabase() async {
   final dbFolder = await getApplicationDocumentsDirectory();
   final file = File(p.join(dbFolder.path, 'thesa_ui.db'));

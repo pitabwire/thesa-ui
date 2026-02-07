@@ -5,6 +5,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:logging/logging.dart';
@@ -87,7 +88,8 @@ class DeduplicationInterceptor extends Interceptor {
         : '?${options.queryParameters.entries.map((e) => '${e.key}=${e.value}').join('&')}';
 
     // For POST/PUT/PATCH, also include body to differentiate
-    final bodyHash = options.data != null ? options.data.hashCode : 0;
+    // Use JSON encoding for more reliable hash generation
+    final bodyHash = options.data != null ? jsonEncode(options.data).hashCode : 0;
 
     return '${options.method}:${options.path}$query:$bodyHash';
   }
