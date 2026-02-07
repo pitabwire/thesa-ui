@@ -1,16 +1,17 @@
-/// Data table renderer with dynamic table engine.
+/// Data table renderer (placeholder).
 ///
-/// Loads data from BFF and renders using DynamicTable.
+/// Full implementation will be in Task 11 (Implement dynamic table engine).
+/// For now, provides basic table rendering with columns from BFF descriptor.
 library;
 
 import 'package:flutter/material.dart';
 
 import '../../../core/core.dart';
-import '../../../tables/tables.dart';
+import '../../../design/design.dart';
 import '../../../widgets/shared/shared.dart';
 
-/// Renders data table component with full functionality
-class DataTableRenderer extends StatefulWidget {
+/// Renders data table component (basic version)
+class DataTableRenderer extends StatelessWidget {
   const DataTableRenderer({
     required this.component,
     this.params = const {},
@@ -21,110 +22,51 @@ class DataTableRenderer extends StatefulWidget {
   final Map<String, String> params;
 
   @override
-  State<DataTableRenderer> createState() => _DataTableRendererState();
-}
-
-class _DataTableRendererState extends State<DataTableRenderer> {
-  late TableController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeController();
-  }
-
-  void _initializeController() {
+  Widget build(BuildContext context) {
     // Parse table config
-    final DataTableConfig tableConfig;
-    if (widget.component.config['table'] != null) {
+    DataTableConfig? tableConfig;
+    if (component.config['table'] != null) {
       try {
         tableConfig = DataTableConfig.fromJson(
-          widget.component.config['table'] as Map<String, dynamic>,
+          component.config['table'] as Map<String, dynamic>,
         );
       } catch (e) {
-        // Use default config if parsing fails
-        tableConfig = DataTableConfig(
-          columns: [
-            TableColumn(field: 'id', label: 'ID'),
-          ],
-        );
+        // Invalid config
       }
-    } else {
-      // Use default config
-      tableConfig = DataTableConfig(
-        columns: [
-          TableColumn(field: 'id', label: 'ID'),
-        ],
+    }
+
+    if (tableConfig == null) {
+      return AppCard(
+        title: 'Data Table: ${component.id}',
+        body: const Text('Table configuration missing or invalid'),
       );
     }
 
-    _controller = TableController(
-      tableConfig: tableConfig,
-      fetchData: _fetchTableData,
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<TableDataResponse> _fetchTableData(TableDataRequest request) async {
-    // TODO: Implement actual BFF data fetching
-    // For now, return mock data
-
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Generate mock data based on columns
-    final mockRows = List.generate(
-      request.pageSize,
-      (index) {
-        final row = <String, dynamic>{};
-        row['id'] = (request.page * request.pageSize + index + 1).toString();
-
-        for (final column in _controller.tableConfig.columns) {
-          if (column.field != 'id') {
-            row[column.field] = 'Sample ${column.field} ${index + 1}';
-          }
-        }
-
-        return row;
-      },
-    );
-
-    return TableDataResponse(
-      rows: mockRows,
-      totalCount: 100, // Mock total
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return DynamicTable(
-      controller: _controller,
-      onRowTap: (row) {
-        // TODO: Handle row tap (navigate to detail page)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Row tapped: ${row['id']}')),
-        );
-      },
-      onRowAction: (action, row) {
-        // TODO: Execute row action
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${action.label} on row ${row['id']}'),
+    // TODO: Load actual data from BFF
+    // For now, show placeholder with column headers
+    return AppCard(
+      title: component.ui?.label ?? 'Data Table',
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Columns: ${tableConfig.columns.map((c) => c.label).join(", ")}',
+            style: AppTypography.bodySmall,
           ),
-        );
-      },
-      onBulkAction: (action, rowIds) {
-        // TODO: Execute bulk action
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${action.label} on ${rowIds.length} rows'),
+          const SizedBox(height: AppSpacing.space8),
+          Text(
+            'Pagination: ${tableConfig.pagination?.defaultPageSize ?? "Not configured"}',
+            style: AppTypography.bodySmall,
           ),
-        );
-      },
+          const SizedBox(height: AppSpacing.space16),
+          const Center(
+            child: Text(
+              'Full table implementation in Task 11',
+              style: TextStyle(fontStyle: FontStyle.italic),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
