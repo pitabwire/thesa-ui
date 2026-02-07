@@ -12,4 +12,6 @@ export 'models/models.dart';
 export 'performance/performance_budgets.dart';
 export 'performance/performance_providers.dart';
 export 'schemas/schema_cache.dart';
+export 'utils/cancel_token_manager.dart';
 export 'utils/debouncer.dart';
+export 'widgets/optimized_widgets.dart';
