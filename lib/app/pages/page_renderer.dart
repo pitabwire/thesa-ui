@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/core.dart';
 import '../../design/design.dart';
 import '../../state/state.dart';
-import '../../ui_engine/ui_engine.dart';
 import '../../widgets/shared/shared.dart';
 
 /// Renders a dynamic page from BFF page descriptor
@@ -84,22 +83,19 @@ class _PageContent extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Render breadcrumbs if available
-            if (page.breadcrumbs != null && page.breadcrumbs!.isNotEmpty) ...[
-              _Breadcrumbs(items: page.breadcrumbs!),
+            // TODO: Render breadcrumbs if available
+            if (page.breadcrumbs.isNotEmpty) ...[
+              _Breadcrumbs(items: page.breadcrumbs),
               const SizedBox(height: AppSpacing.space16),
             ],
 
-            // Render components using ComponentRenderer
+            // Render components
             ...page.components
                 .where((component) => component.permission.allowed)
                 .map(
                   (component) => Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.space16),
-                    child: ComponentRenderer(
-                      component: component,
-                      params: params,
-                    ),
+                    child: _ComponentPlaceholder(component: component),
                   ),
                 ),
 
@@ -157,3 +153,25 @@ class _Breadcrumbs extends StatelessWidget {
   }
 }
 
+/// Component placeholder (TODO: implement actual component rendering)
+class _ComponentPlaceholder extends StatelessWidget {
+  const _ComponentPlaceholder({required this.component});
+
+  final ComponentDescriptor component;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      title: component.type,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Component ID: ${component.id}'),
+          Text('Type: ${component.type}'),
+          if (component.config != null)
+            Text('Config: ${component.config.toString()}'),
+        ],
+      ),
+    );
+  }
+}
