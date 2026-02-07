@@ -8,11 +8,12 @@ import '../../core/core.dart';
 import '../../design/design.dart';
 import '../../plugins/plugin_provider.dart';
 import '../../state/state.dart';
+import '../../telemetry/telemetry.dart';
 import '../../ui_engine/ui_engine.dart';
 import '../../widgets/shared/shared.dart';
 
 /// Renders a dynamic page from BFF page descriptor
-class PageRenderer extends ConsumerWidget {
+class PageRenderer extends ConsumerStatefulWidget {
   const PageRenderer({
     required this.pageId,
     this.params = const {},
@@ -26,22 +27,44 @@ class PageRenderer extends ConsumerWidget {
   final Map<String, String> params;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final pageAsync = ref.watch(pageProvider(pageId));
+  ConsumerState<PageRenderer> createState() => _PageRendererState();
+}
+
+class _PageRendererState extends ConsumerState<PageRenderer> {
+  final DateTime _startTime = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    // Set current page for performance monitoring
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(performanceMonitorProvider).setCurrentPage(widget.pageId);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pageAsync = ref.watch(pageProvider(widget.pageId));
     final pluginRegistry = ref.watch(pluginRegistryProvider);
+    final telemetryService = ref.watch(telemetryServiceProvider);
 
     return pageAsync.when(
       data: (page) {
+        // Record page render telemetry
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _recordPageRenderTelemetry(page, telemetryService);
+        });
+
         // Check plugin registry first
-        if (pluginRegistry.hasPagePlugin(pageId)) {
-          final builder = pluginRegistry.getPagePlugin(pageId)!;
+        if (pluginRegistry.hasPagePlugin(widget.pageId)) {
+          final builder = pluginRegistry.getPagePlugin(widget.pageId)!;
           return builder(context, page, ref);
         }
 
         // Fall back to generic renderer
         return _PageContent(
           page: page,
-          params: params,
+          params: widget.params,
         );
       },
       loading: () => const Scaffold(
@@ -55,9 +78,30 @@ class PageRenderer extends ConsumerWidget {
         body: Center(
           child: AppErrorWidget(
             error: error,
-            onRetry: () => ref.invalidate(pageProvider(pageId)),
+            onRetry: () => ref.invalidate(pageProvider(widget.pageId)),
           ),
         ),
+      ),
+    );
+  }
+
+  void _recordPageRenderTelemetry(
+    PageDescriptor page,
+    TelemetryService telemetryService,
+  ) {
+    final renderTime = DateTime.now().difference(_startTime).inMilliseconds;
+    final componentCount =
+        page.components.where((c) => c.permission.allowed).length;
+
+    telemetryService.record(
+      TelemetryEvent.pageRender(
+        pageId: widget.pageId,
+        renderTimeMs: renderTime,
+        componentCount: componentCount,
+        fromCache: true, // TODO: Track actual cache status from provider
+        cacheAgeMs: null, // TODO: Get from cache metadata
+        stale: false, // TODO: Get from cache metadata
+        timestamp: DateTime.now(),
       ),
     );
   }

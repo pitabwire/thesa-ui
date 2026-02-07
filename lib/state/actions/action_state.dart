@@ -4,6 +4,7 @@ library;
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'action_state.freezed.dart';
+part 'action_state.g.dart';
 
 /// Action execution state
 @freezed

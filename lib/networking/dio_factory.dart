@@ -7,6 +7,7 @@ library;
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../telemetry/telemetry_service.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/dedup_interceptor.dart';
 import 'interceptors/etag_interceptor.dart';
@@ -21,6 +22,7 @@ class DioFactory {
   static Dio create({
     required String baseUrl,
     required FlutterSecureStorage secureStorage,
+    required TelemetryService telemetryService,
     Duration connectTimeout = const Duration(seconds: 15),
     Duration receiveTimeout = const Duration(seconds: 30),
     Duration sendTimeout = const Duration(seconds: 30),
@@ -47,7 +49,10 @@ class DioFactory {
     // and in reverse order for responses
 
     // 1. Auth interceptor (adds token, handles 401 refresh)
-    dio.interceptors.add(AuthInterceptor(secureStorage: secureStorage));
+    dio.interceptors.add(AuthInterceptor(
+      secureStorage: secureStorage,
+      telemetryService: telemetryService,
+    ));
 
     // 2. ETag interceptor (cache validation)
     dio.interceptors.add(ETagInterceptor());
@@ -56,7 +61,7 @@ class DioFactory {
     dio.interceptors.add(DeduplicationInterceptor());
 
     // 4. Telemetry interceptor (performance tracking)
-    dio.interceptors.add(TelemetryInterceptor());
+    dio.interceptors.add(TelemetryInterceptor(telemetryService: telemetryService));
 
     // 5. Retry interceptor (exponential backoff)
     dio.interceptors.add(RetryInterceptor(dio: dio));

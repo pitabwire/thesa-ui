@@ -8,6 +8,7 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/core.dart';
+import '../../telemetry/telemetry.dart';
 import '../core/dependencies_provider.dart';
 import 'action_state.dart';
 
@@ -56,6 +57,8 @@ class Action extends _$Action {
   /// Execute the action (called after confirmation or directly)
   Future<void> execute({Map<String, dynamic> payload = const {}}) async {
     state = const ActionState.submitting();
+    final startTime = DateTime.now();
+    final telemetryService = ref.read(telemetryServiceProvider);
 
     try {
       _logger.info('Executing action: $actionId');
@@ -66,6 +69,19 @@ class Action extends _$Action {
       final response = await bffClient.executeAction(actionId, data: payload);
 
       _logger.info('Action executed successfully: $actionId');
+
+      // Record success telemetry
+      final durationMs = DateTime.now().difference(startTime).inMilliseconds;
+      telemetryService.record(
+        TelemetryEvent.actionExecution(
+          actionId: actionId,
+          actionType: 'bff_action',
+          pageId: 'unknown', // TODO: Track current page context
+          success: true,
+          durationMs: durationMs,
+          timestamp: DateTime.now(),
+        ),
+      );
 
       // Extract response data
       final message = response['message'] as String?;
@@ -86,6 +102,20 @@ class Action extends _$Action {
       );
     } catch (e, stack) {
       _logger.severe('Action execution failed: $actionId', e, stack);
+
+      // Record error telemetry
+      final durationMs = DateTime.now().difference(startTime).inMilliseconds;
+      telemetryService.record(
+        TelemetryEvent.actionExecution(
+          actionId: actionId,
+          actionType: 'bff_action',
+          pageId: 'unknown', // TODO: Track current page context
+          success: false,
+          durationMs: durationMs,
+          errorMessage: e.toString(),
+          timestamp: DateTime.now(),
+        ),
+      );
 
       // Extract error details
       String message = 'Action failed';
