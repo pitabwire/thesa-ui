@@ -124,7 +124,7 @@ class AppColors {
     // For dark backgrounds, use light text
     final luminance = bgColor.computeLuminance();
     return luminance > 0.5
-        ? (isDark ? darkOnSurface : lightOnSurface)
-        : Color(0xFFFFFFFF);
+        ? (isDark ? darkOnPrimary : lightOnSurface)
+        : (isDark ? darkOnSurface : lightOnPrimary);
   }
 }

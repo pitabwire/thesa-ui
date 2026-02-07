@@ -9,9 +9,9 @@ import 'package:flutter/material.dart';
 class AppTypography {
   const AppTypography._();
 
-  /// Font family - defaults to system font
+  /// Font family - defaults to Roboto for consistent cross-platform styling
   /// Can be overridden for enterprise branding
-  static const String fontFamily = 'Roboto'; // System default
+  static const String fontFamily = 'Roboto'; // Default app font
 
   // ============================================================
   // DISPLAY STYLES (largest text)
