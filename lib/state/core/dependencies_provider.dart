@@ -24,8 +24,11 @@ FlutterSecureStorage secureStorage(SecureStorageRef ref) {
 @Riverpod(keepAlive: true)
 Dio dio(DioRef ref) {
   final secureStorage = ref.watch(secureStorageProvider);
-  // TODO: Get baseUrl from config/environment
-  const baseUrl = 'https://api.example.com';
+  // Get baseUrl from environment or use default
+  const baseUrl = String.fromEnvironment(
+    'BASE_URL',
+    defaultValue: 'https://api.example.com',
+  );
   return DioFactory.create(
     baseUrl: baseUrl,
     secureStorage: secureStorage,

@@ -1,6 +1,8 @@
 /// DAO for workflow state persistence.
 library;
 
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import '../app_database.dart';
@@ -37,7 +39,7 @@ class WorkflowDao extends DatabaseAccessor<AppDatabase>
       WorkflowStateCompanion.insert(
         instanceId: instanceId,
         workflowId: workflowId,
-        data: payload.toString(), // Store as JSON string
+        data: jsonEncode(payload), // Store as JSON string
         currentStep: currentStep,
         status: 'in_progress',
         startedAt: existing?.startedAt ?? now,
