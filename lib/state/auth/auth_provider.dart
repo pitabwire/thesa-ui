@@ -23,14 +23,13 @@ class Auth extends _$Auth {
     // Check for existing token on startup
     final secureStorage = ref.read(secureStorageProvider);
     final accessToken = await AuthInterceptor.getAccessToken(secureStorage);
-    final refreshToken = await AuthInterceptor.getRefreshToken(secureStorage);
 
-    if (accessToken != null && refreshToken != null) {
-      // Tokens exist, restore session with actual tokens
-      _logger.info('Found existing tokens, restoring session');
-      return AuthState.loggedIn(
-        accessToken: accessToken,
-        refreshToken: refreshToken,
+    if (accessToken != null) {
+      // Token exists, assume logged in
+      _logger.info('Found existing access token, restoring session');
+      return const AuthState.loggedIn(
+        accessToken: 'restored',
+        refreshToken: 'restored',
       );
     }
 

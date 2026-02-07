@@ -17,13 +17,9 @@ import 'package:logging/logging.dart';
 
 /// Authentication interceptor
 class AuthInterceptor extends Interceptor {
-  AuthInterceptor({
-    required this.secureStorage,
-    required this.dio,
-  });
+  AuthInterceptor({required this.secureStorage});
 
   final FlutterSecureStorage secureStorage;
-  final Dio dio;
   final _logger = Logger('AuthInterceptor');
 
   // Mutex for token refresh to prevent concurrent refreshes
@@ -83,7 +79,8 @@ class AuthInterceptor extends Interceptor {
       final options = err.requestOptions;
       options.headers['Authorization'] = 'Bearer $newAccessToken';
 
-      // Use the main dio instance to retry with full configuration
+      // Create a new Dio instance to avoid infinite loop
+      final dio = Dio();
       final response = await dio.fetch(options);
 
       return handler.resolve(response);
@@ -114,22 +111,9 @@ class AuthInterceptor extends Interceptor {
         return null;
       }
 
-      // Call the refresh endpoint with a minimal Dio configured with baseUrl
-      // Extract baseUrl from the main dio instance
-      final baseUrl = dio.options.baseUrl;
-      final refreshDio = Dio(
-        BaseOptions(
-          baseUrl: baseUrl,
-          connectTimeout: dio.options.connectTimeout,
-          receiveTimeout: dio.options.receiveTimeout,
-          sendTimeout: dio.options.sendTimeout,
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-        ),
-      );
-      final response = await refreshDio.post<Map<String, dynamic>>(
+      // Call the refresh endpoint
+      final dio = Dio();
+      final response = await dio.post<Map<String, dynamic>>(
         '/auth/refresh',
         data: {'refresh_token': refreshToken},
       );

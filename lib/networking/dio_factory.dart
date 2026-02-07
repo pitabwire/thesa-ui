@@ -47,10 +47,7 @@ class DioFactory {
     // and in reverse order for responses
 
     // 1. Auth interceptor (adds token, handles 401 refresh)
-    dio.interceptors.add(AuthInterceptor(
-      secureStorage: secureStorage,
-      dio: dio,
-    ));
+    dio.interceptors.add(AuthInterceptor(secureStorage: secureStorage));
 
     // 2. ETag interceptor (cache validation)
     dio.interceptors.add(ETagInterceptor());

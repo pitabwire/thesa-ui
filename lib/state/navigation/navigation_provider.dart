@@ -45,7 +45,11 @@ class Navigation extends _$Navigation {
   /// Refresh navigation from server
   Future<void> refresh() async {
     _logger.info('Refreshing navigation');
-    ref.invalidateSelf();
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final bffClient = ref.read(bffClientProvider);
+      return await bffClient.getNavigation();
+    });
   }
 
   /// Get visible navigation items (filtered by permissions)

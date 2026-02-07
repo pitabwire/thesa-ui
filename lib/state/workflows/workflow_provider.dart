@@ -3,8 +3,6 @@
 /// Tracks workflow progress and manages step transitions.
 library;
 
-import 'dart:convert';
-
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -39,7 +37,9 @@ class Workflow extends _$Workflow {
         // Parse the workflow descriptor from data field
         // Note: data is stored as JSON string in the database
         final descriptor = WorkflowDescriptor.fromJson(
-          jsonDecode(persistedState.data as String) as Map<String, dynamic>,
+          Map<String, dynamic>.from(
+            Map<String, dynamic>.from(persistedState.data as Object),
+          ),
         );
 
         return descriptor.copyWith(currentStep: persistedState.currentStep);

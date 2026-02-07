@@ -65,8 +65,7 @@ class AppChip extends StatelessWidget {
           avatar: icon != null ? Icon(icon, size: AppSizing.iconSmall) : null,
           onDeleted: onDeleted,
           deleteIcon: const Icon(Icons.close, size: AppSizing.iconSmall),
-          selected: isSelected,
-          onSelected: onSelected,
+          onSelected: onSelected != null ? (_) => onSelected!(true) : null,
         ),
       AppChipVariant.selection => FilterChip(
           label: Text(label),

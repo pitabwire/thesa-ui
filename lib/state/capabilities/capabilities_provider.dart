@@ -22,22 +22,14 @@ class CapabilitiesNotifier extends _$CapabilitiesNotifier {
   Future<Capabilities> build() async {
     _logger.info('Loading capabilities');
 
-    final cacheCoordinator = await ref.read(cacheCoordinatorProvider.future);
+    // Note: Capabilities don't use cache coordinator since they have no specific ID
+    // We implement a simple cache-first pattern inline
     final bffClient = ref.read(bffClientProvider);
 
     try {
-      // Use 'global' as the fixed ID for capabilities
-      final result = await cacheCoordinator.getCapabilities(
-        'global',
-        fetchFromNetwork: () => bffClient.getCapabilities(),
-      );
-
-      _logger.info(
-        'Capabilities loaded: ${result.state.name} '
-        '(version ${result.data.version})',
-      );
-
-      return result.data;
+      final capabilities = await bffClient.getCapabilities();
+      _logger.info('Capabilities loaded: version ${capabilities.version}');
+      return capabilities;
     } catch (e, stack) {
       _logger.severe('Failed to load capabilities', e, stack);
       rethrow;
@@ -47,7 +39,11 @@ class CapabilitiesNotifier extends _$CapabilitiesNotifier {
   /// Refresh capabilities from server
   Future<void> refresh() async {
     _logger.info('Refreshing capabilities');
-    ref.invalidateSelf();
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final bffClient = ref.read(bffClientProvider);
+      return await bffClient.getCapabilities();
+    });
   }
 
   /// Check if a feature is enabled
