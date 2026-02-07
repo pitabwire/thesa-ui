@@ -15,11 +15,18 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logging/logging.dart';
 
+import '../../telemetry/models/telemetry_event.dart';
+import '../../telemetry/telemetry_service.dart';
+
 /// Authentication interceptor
 class AuthInterceptor extends Interceptor {
-  AuthInterceptor({required this.secureStorage});
+  AuthInterceptor({
+    required this.secureStorage,
+    this.telemetryService,
+  });
 
   final FlutterSecureStorage secureStorage;
+  final TelemetryService? telemetryService;
   final _logger = Logger('AuthInterceptor');
 
   // Mutex for token refresh to prevent concurrent refreshes
@@ -101,12 +108,18 @@ class AuthInterceptor extends Interceptor {
 
     // Start a new refresh
     _refreshCompleter = Completer<String?>();
+    final startTime = DateTime.now();
 
     try {
       final refreshToken = await secureStorage.read(key: _refreshTokenKey);
 
       if (refreshToken == null) {
         _logger.warning('No refresh token available');
+        _recordRefreshTelemetry(
+          startTime: startTime,
+          success: false,
+          errorMessage: 'No refresh token available',
+        );
         _refreshCompleter!.complete(null);
         return null;
       }
@@ -132,20 +145,55 @@ class AuthInterceptor extends Interceptor {
             );
           }
 
+          _recordRefreshTelemetry(
+            startTime: startTime,
+            success: true,
+          );
           _refreshCompleter!.complete(newAccessToken);
           return newAccessToken;
         }
       }
 
+      _recordRefreshTelemetry(
+        startTime: startTime,
+        success: false,
+        errorMessage: 'Invalid response from refresh endpoint',
+      );
       _refreshCompleter!.complete(null);
       return null;
     } catch (e, stack) {
       _logger.severe('Token refresh request failed', e, stack);
+      _recordRefreshTelemetry(
+        startTime: startTime,
+        success: false,
+        errorMessage: e.toString(),
+      );
       _refreshCompleter!.complete(null);
       return null;
     } finally {
       _refreshCompleter = null;
     }
+  }
+
+  /// Record telemetry for auth refresh
+  void _recordRefreshTelemetry({
+    required DateTime startTime,
+    required bool success,
+    String? errorMessage,
+  }) {
+    if (telemetryService == null) return;
+
+    final durationMs = DateTime.now().difference(startTime).inMilliseconds;
+
+    telemetryService!.record(
+      TelemetryEvent.authRefresh(
+        success: success,
+        durationMs: durationMs,
+        triggeredBy: '401_response',
+        errorMessage: errorMessage,
+        timestamp: DateTime.now(),
+      ),
+    );
   }
 
   /// Clear all auth tokens and session data
