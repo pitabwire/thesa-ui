@@ -11,6 +11,7 @@ import '../../cache/cache_coordinator.dart';
 import '../../cache/database/app_database.dart';
 import '../../networking/bff_client.dart';
 import '../../networking/dio_factory.dart';
+import '../../telemetry/telemetry_provider.dart';
 
 part 'dependencies_provider.g.dart';
 
@@ -24,11 +25,13 @@ FlutterSecureStorage secureStorage(SecureStorageRef ref) {
 @Riverpod(keepAlive: true)
 Dio dio(DioRef ref) {
   final secureStorage = ref.watch(secureStorageProvider);
+  final telemetryService = ref.watch(telemetryServiceProvider);
   // TODO: Get baseUrl from config/environment
   const baseUrl = 'https://api.example.com';
   return DioFactory.create(
     baseUrl: baseUrl,
     secureStorage: secureStorage,
+    telemetryService: telemetryService,
   );
 }
 
