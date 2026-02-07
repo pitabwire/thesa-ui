@@ -6,6 +6,7 @@
 /// ```
 library;
 
+export 'accessibility/accessibility.dart';
 export 'constants/bff_endpoints.dart';
 export 'errors/errors.dart';
 export 'models/models.dart';
