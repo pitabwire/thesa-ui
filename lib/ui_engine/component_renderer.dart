@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/core.dart';
+import '../plugins/plugin_provider.dart';
 import '../widgets/shared/shared.dart';
 import 'renderers/renderers.dart';
 
@@ -41,7 +42,14 @@ class ComponentRenderer extends ConsumerWidget {
   }
 
   Widget _buildComponentWidget(BuildContext context, WidgetRef ref) {
-    // Route to appropriate renderer based on component type
+    // Check plugin registry first
+    final pluginRegistry = ref.watch(pluginRegistryProvider);
+    if (pluginRegistry.hasComponentPlugin(component.type)) {
+      final builder = pluginRegistry.getComponentPlugin(component.type)!;
+      return builder(component, ref);
+    }
+
+    // Route to built-in renderer based on component type
     switch (component.type.toLowerCase()) {
       // Layout components
       case 'stack':

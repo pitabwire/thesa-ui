@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/core.dart';
 import '../../design/design.dart';
+import '../../plugins/plugin_provider.dart';
 import '../../state/state.dart';
 import '../../ui_engine/ui_engine.dart';
 import '../../widgets/shared/shared.dart';
@@ -27,12 +28,22 @@ class PageRenderer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pageAsync = ref.watch(pageProvider(pageId));
+    final pluginRegistry = ref.watch(pluginRegistryProvider);
 
     return pageAsync.when(
-      data: (page) => _PageContent(
-        page: page,
-        params: params,
-      ),
+      data: (page) {
+        // Check plugin registry first
+        if (pluginRegistry.hasPagePlugin(pageId)) {
+          final builder = pluginRegistry.getPagePlugin(pageId)!;
+          return builder(context, page, ref);
+        }
+
+        // Fall back to generic renderer
+        return _PageContent(
+          page: page,
+          params: params,
+        );
+      },
       loading: () => const Scaffold(
         body: Center(
           child: AppLoadingIndicator(
