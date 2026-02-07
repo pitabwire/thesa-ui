@@ -51,10 +51,11 @@ class AppAvatar extends StatelessWidget {
     };
 
     // If image URL provided, show image avatar
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
+    final localImageUrl = imageUrl;
+    if (localImageUrl != null && localImageUrl.isNotEmpty) {
       return CircleAvatar(
         radius: diameter / 2,
-        backgroundImage: NetworkImage(imageUrl!),
+        backgroundImage: NetworkImage(localImageUrl),
         backgroundColor: backgroundColor ?? theme.colorScheme.primary,
       );
     }
@@ -98,7 +99,7 @@ class AppAvatarGroup extends StatelessWidget {
   });
 
   /// List of avatar data
-  final List<_AvatarData> avatars;
+  final List<AvatarData> avatars;
 
   /// Maximum visible avatars
   final int maxVisible;
@@ -174,8 +175,8 @@ class AppAvatarGroup extends StatelessWidget {
 }
 
 /// Avatar data model
-class _AvatarData {
-  const _AvatarData({
+class AvatarData {
+  const AvatarData({
     this.imageUrl,
     this.initials,
   });

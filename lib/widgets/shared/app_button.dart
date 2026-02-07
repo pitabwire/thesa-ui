@@ -28,7 +28,7 @@ enum AppButtonSize {
   /// Height 40px, standard text (default)
   medium,
 
-  /// Height 48px, larger text
+  /// Height 48px, same text as medium
   large,
 }
 
