@@ -9,43 +9,52 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../cache/cache_coordinator.dart';
 import '../../cache/database/app_database.dart';
+import '../../core/config/app_config.dart';
 import '../../networking/bff_client.dart';
 import '../../networking/dio_factory.dart';
 import '../../telemetry/telemetry_provider.dart';
+import '../auth/auth_provider.dart';
+import '../auth/oidc_service.dart';
 
 part 'dependencies_provider.g.dart';
 
 /// Secure storage provider (singleton)
 @Riverpod(keepAlive: true)
-FlutterSecureStorage secureStorage(SecureStorageRef ref) {
+FlutterSecureStorage secureStorage(Ref ref) {
   return const FlutterSecureStorage();
 }
 
 /// Dio instance provider (singleton)
 @Riverpod(keepAlive: true)
-Dio dio(DioRef ref) {
+Dio dio(Ref ref) {
   final secureStorage = ref.watch(secureStorageProvider);
   final telemetryService = ref.watch(telemetryServiceProvider);
-  // TODO: Get baseUrl from config/environment
-  const baseUrl = 'https://api.example.com';
+  final oidc = ref.watch(oidcServiceProvider);
+
   return DioFactory.create(
-    baseUrl: baseUrl,
+    baseUrl: AppConfig.bffBaseUrl,
     secureStorage: secureStorage,
     telemetryService: telemetryService,
+    onRefreshToken: () async {
+      final result = await oidc.refreshTokenWithResult();
+      if (result.result == TokenRefreshResult.success) {
+        return result.token?.accessToken;
+      }
+      return null;
+    },
   );
 }
 
 /// BFF client provider (singleton)
 @Riverpod(keepAlive: true)
-BffClient bffClient(BffClientRef ref) {
+BffClient bffClient(Ref ref) {
   final dio = ref.watch(dioProvider);
   return BffClient(dio);
 }
 
 /// App database provider (singleton)
 @Riverpod(keepAlive: true)
-Future<AppDatabase> database(DatabaseRef ref) async {
-  // Database will be disposed when app is closed
+Future<AppDatabase> database(Ref ref) async {
   final db = await createDatabase();
   ref.onDispose(() => db.close());
   return db;
@@ -53,7 +62,7 @@ Future<AppDatabase> database(DatabaseRef ref) async {
 
 /// Cache coordinator provider (singleton)
 @Riverpod(keepAlive: true)
-Future<CacheCoordinator> cacheCoordinator(CacheCoordinatorRef ref) async {
+Future<CacheCoordinator> cacheCoordinator(Ref ref) async {
   final database = await ref.watch(databaseProvider.future);
   return CacheCoordinator(database);
 }

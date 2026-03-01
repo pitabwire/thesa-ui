@@ -5,6 +5,7 @@ export 'actions/action_provider.dart';
 export 'actions/action_state.dart';
 export 'auth/auth_provider.dart';
 export 'auth/auth_state.dart';
+export 'auth/oidc_service.dart';
 export 'capabilities/capabilities_provider.dart';
 export 'connectivity/connectivity_provider.dart';
 export 'core/dependencies_provider.dart';

@@ -34,9 +34,7 @@ class BffClient {
 
   /// Get page descriptor by ID
   Future<PageDescriptor> getPage(String pageId) async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/ui/pages/$pageId',
-    );
+    final response = await _dio.get<Map<String, dynamic>>('/ui/pages/$pageId');
     return PageDescriptor.fromJson(response.data!);
   }
 
@@ -122,37 +120,64 @@ class BffClient {
     return response.data!;
   }
 
-  // ========== Authentication ==========
+  // ========== Commands ==========
 
-  /// Login
-  Future<Map<String, dynamic>> login({
-    required String username,
-    required String password,
+  /// Execute a BFF command (single mutation endpoint)
+  Future<Map<String, dynamic>> executeCommand(
+    String commandId, {
+    Map<String, dynamic>? input,
+    Map<String, dynamic>? routeParams,
+    String? idempotencyKey,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
-      '/auth/login',
+      '/ui/commands/$commandId',
       data: {
-        'username': username,
-        'password': password,
+        if (input != null) 'input': input,
+        if (routeParams != null) 'route_params': routeParams,
+        if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
       },
     );
     return response.data!;
   }
 
-  /// Refresh token
-  Future<Map<String, dynamic>> refreshToken(String refreshToken) async {
-    final response = await _dio.post<Map<String, dynamic>>(
-      '/auth/refresh',
-      data: {
-        'refresh_token': refreshToken,
-      },
+  // ========== Forms ==========
+
+  /// Get form descriptor
+  Future<Map<String, dynamic>> getForm(String formId) async {
+    final response = await _dio.get<Map<String, dynamic>>('/ui/forms/$formId');
+    return response.data!;
+  }
+
+  /// Get form pre-fill data
+  Future<Map<String, dynamic>> getFormData(String formId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/ui/forms/$formId/data',
     );
     return response.data!;
   }
 
-  /// Logout
-  Future<void> logout() async {
-    await _dio.post<void>('/auth/logout');
+  // ========== Page Data ==========
+
+  /// Get page data (table rows, etc.)
+  Future<Map<String, dynamic>> getPageData(
+    String pageId, {
+    int? page,
+    int? pageSize,
+    String? sort,
+    String? sortDir,
+    Map<String, dynamic>? filters,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/ui/pages/$pageId/data',
+      queryParameters: {
+        if (page != null) 'page': page,
+        if (pageSize != null) 'page_size': pageSize,
+        if (sort != null) 'sort': sort,
+        if (sortDir != null) 'sort_dir': sortDir,
+        if (filters != null) ...filters,
+      },
+    );
+    return response.data!;
   }
 
   // ========== Search ==========
@@ -165,10 +190,7 @@ class BffClient {
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/ui/resources/$resourceType/search',
-      queryParameters: {
-        'q': query,
-        if (limit != null) 'limit': limit,
-      },
+      queryParameters: {'q': query, if (limit != null) 'limit': limit},
     );
     return response.data!;
   }

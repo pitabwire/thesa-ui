@@ -1,56 +1,55 @@
 /// BFF API endpoint constants.
 ///
 /// All BFF endpoint paths are defined here for centralized management.
-/// Base URL is configured separately per environment.
+/// Authentication is handled directly via OIDC (openid_client) — not
+/// through the BFF. The BFF only validates JWT tokens.
 library;
 
 /// BFF API endpoints
 class BffEndpoints {
-  BffEndpoints._(); // Private constructor to prevent instantiation
+  BffEndpoints._();
 
   /// Base path for UI endpoints
   static const String uiBase = '/ui';
 
-  // Authentication and session
-  static const String login = '/auth/login';
-  static const String logout = '/auth/logout';
-  static const String refreshToken = '/auth/refresh';
-  static const String session = '/auth/session';
-
-  // Capabilities and navigation
-  static const String capabilities = '$uiBase/capabilities';
+  // Navigation
   static const String navigation = '$uiBase/navigation';
 
   // Pages
   static const String pages = '$uiBase/pages';
   static String page(String pageId) => '$pages/$pageId';
+  static String pageData(String pageId) => '$pages/$pageId/data';
 
-  // Schemas
-  static const String schemas = '$uiBase/schemas';
-  static String schema(String schemaId) => '$schemas/$schemaId';
+  // Forms
+  static const String forms = '$uiBase/forms';
+  static String form(String formId) => '$forms/$formId';
+  static String formData(String formId) => '$forms/$formId/data';
 
-  // Resources (generic CRUD operations)
-  static const String resources = '$uiBase/resources';
-  static String resource(String resourceType) => '$resources/$resourceType';
-  static String resourceItem(String resourceType, String id) =>
-      '$resources/$resourceType/$id';
-
-  // Actions
-  static const String actions = '$uiBase/actions';
-  static String action(String actionId) => '$actions/$actionId';
+  // Commands (single mutation endpoint)
+  static const String commands = '$uiBase/commands';
+  static String command(String commandId) => '$commands/$commandId';
 
   // Workflows
   static const String workflows = '$uiBase/workflows';
-  static String workflow(String workflowId) => '$workflows/$workflowId';
-  static String workflowStep(String workflowId, String stepId) =>
-      '$workflows/$workflowId/steps/$stepId';
+  static String workflow(String instanceId) => '$workflows/$instanceId';
+  static String workflowStart(String workflowId) =>
+      '$workflows/$workflowId/start';
+  static String workflowAdvance(String instanceId) =>
+      '$workflows/$instanceId/advance';
+  static String workflowCancel(String instanceId) =>
+      '$workflows/$instanceId/cancel';
 
-  // Search and filtering
-  static String search(String resourceType) => '$resources/$resourceType/search';
-  static String filter(String resourceType) => '$resources/$resourceType/filter';
+  // Search and lookup
+  static const String search = '$uiBase/search';
+  static const String lookups = '$uiBase/lookups';
+  static String lookup(String lookupId) => '$lookups/$lookupId';
 
   // File operations
   static const String upload = '$uiBase/upload';
   static const String download = '$uiBase/download';
   static String downloadFile(String fileId) => '$download/$fileId';
+
+  // Health (public, no auth)
+  static const String health = '$uiBase/health';
+  static const String ready = '$uiBase/ready';
 }

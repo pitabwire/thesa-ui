@@ -23,6 +23,7 @@ class DioFactory {
     required String baseUrl,
     required FlutterSecureStorage secureStorage,
     required TelemetryService telemetryService,
+    Future<String?> Function()? onRefreshToken,
     Duration connectTimeout = const Duration(seconds: 15),
     Duration receiveTimeout = const Duration(seconds: 30),
     Duration sendTimeout = const Duration(seconds: 30),
@@ -48,11 +49,15 @@ class DioFactory {
     // The order matters - they execute in order for requests,
     // and in reverse order for responses
 
-    // 1. Auth interceptor (adds token, handles 401 refresh)
-    dio.interceptors.add(AuthInterceptor(
-      secureStorage: secureStorage,
-      telemetryService: telemetryService,
-    ));
+    // 1. Auth interceptor (adds token, handles 401 refresh via OIDC)
+    dio.interceptors.add(
+      AuthInterceptor(
+        secureStorage: secureStorage,
+        dio: dio,
+        telemetryService: telemetryService,
+        onRefreshToken: onRefreshToken,
+      ),
+    );
 
     // 2. ETag interceptor (cache validation)
     dio.interceptors.add(ETagInterceptor());
@@ -61,20 +66,24 @@ class DioFactory {
     dio.interceptors.add(DeduplicationInterceptor());
 
     // 4. Telemetry interceptor (performance tracking)
-    dio.interceptors.add(TelemetryInterceptor(telemetryService: telemetryService));
+    dio.interceptors.add(
+      TelemetryInterceptor(telemetryService: telemetryService),
+    );
 
     // 5. Retry interceptor (exponential backoff)
     dio.interceptors.add(RetryInterceptor(dio: dio));
 
     // Add logging in debug mode
     if (const bool.fromEnvironment('dart.vm.product') == false) {
-      dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        error: true,
-        requestHeader: false,
-        responseHeader: false,
-      ));
+      dio.interceptors.add(
+        LogInterceptor(
+          requestBody: true,
+          responseBody: true,
+          error: true,
+          requestHeader: false,
+          responseHeader: false,
+        ),
+      );
     }
 
     return dio;

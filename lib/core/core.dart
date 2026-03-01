@@ -7,6 +7,7 @@
 library;
 
 export 'accessibility/accessibility.dart';
+export 'config/app_config.dart';
 export 'constants/bff_endpoints.dart';
 export 'errors/errors.dart';
 export 'models/models.dart';

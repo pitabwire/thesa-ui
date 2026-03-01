@@ -44,14 +44,25 @@ dependencies:
   # Responsive Layout
   flutter_adaptive_scaffold: ^0.2.5
 
-  # Security - Token Storage
+  # Security - Token Storage & OIDC
   flutter_secure_storage: ^9.2.2
+  openid_client: ^0.4.9+1
+
+  # Platform-specific auth (deep links, URL launcher)
+  app_links: ^7.0.0
+  url_launcher: ^6.3.2
 
   # Connectivity Detection
   connectivity_plus: ^6.1.1
 
+  # Environment Configuration
+  flutter_dotenv: ^5.2.1
+
   # Logging and Telemetry
   logging: ^1.2.0
+
+  # Web platform support
+  web: ^1.1.0
 
   # UI Utilities
   intl: ^0.20.1
@@ -73,25 +84,24 @@ dev_dependencies:
   drift_dev: ^2.22.0
   freezed: ^3.0.0
   json_serializable: ^6.8.0
-  reactive_forms_generator: ^8.0.3
+  # reactive_forms_generator: ^8.0.3  # TODO: Re-enable when compatible with riverpod_generator
   # retrofit_generator: ^10.0.0  # TODO: Re-enable when compatible with retrofit
 
   # Linting
   flutter_lints: ^5.0.0
-  custom_lint: ^0.8.0
+  # custom_lint: ^0.8.0  # TODO: Re-enable when compatible with build_verify
   riverpod_lint: ^3.0.0
 
   # Testing
   mockito: ^5.4.4
-  build_verify: ^3.1.0
+  # build_verify: ^3.1.0  # TODO: Re-enable when compatible with reactive_forms_generator
 
 flutter:
   uses-material-design: true
 
-  # Assets will be added as needed
-  # assets:
-  #   - assets/images/
-  #   - assets/icons/
+  assets:
+    - .env
+    - .env.production
 
   # Fonts will be added as part of design system
   # fonts:

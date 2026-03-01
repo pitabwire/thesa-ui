@@ -65,10 +65,9 @@ coverage/
 *.keystore
 *.jks
 
-# Environment files
-.env
-.env.*
-!.env.example
+# Environment files (keep .env as template, ignore local overrides)
+.env.local
+.env.*.local
 
 # IDE
 .vscode/
